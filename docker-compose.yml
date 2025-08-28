@@ -1,0 +1,50 @@
+# Define a versão do Docker Compose que estamos usando
+version: '3.8'
+
+# Define os "serviços" (contêineres) que compõem nossa aplicação
+services:
+
+  # 1. O serviço do banco de dados MySQL
+  db:
+    image: mysql:latest
+    container_name: helpdesk-db-mysql
+    restart: always # Garante que o banco de dados sempre reinicie se parar
+    environment:
+      # --- CONFIGURAÇÃO AUTOMÁTICA DO BANCO DE DADOS ---
+      # ATENÇÃO: Troque as senhas abaixo por senhas fortes de sua escolha
+      MYSQL_ROOT_PASSWORD: sua_senha_forte_do_root
+      MYSQL_DATABASE: chatbot_db        # Cria este banco de dados na primeira inicialização
+      MYSQL_USER: chatbot_user          # Cria este usuário na primeira inicialização
+      MYSQL_PASSWORD: outra_senha_forte # Define a senha para o usuário acima
+    ports:
+      # Mapeia a porta do seu PC para a porta do contêiner, para que o DBeaver possa se conectar
+      - "3306:3306"
+    volumes:
+      # Cria um "volume" para persistir os dados do banco de dados.
+      # Se você parar e reiniciar os contêineres, os dados não serão perdidos.
+      - mysql-data:/var/lib/mysql
+
+  # 2. O serviço do nosso backend Node.js
+  backend:
+    container_name: helpdesk-backend-nodejs
+    # Diz ao Docker para construir este contêiner usando as instruções
+    # do arquivo 'Dockerfile' que está dentro da pasta ./backend
+    build: ./backend
+    restart: always
+    ports:
+      # Mapeia a porta do seu PC para a porta do contêiner, para que você possa acessar a API
+      - "3000:3000"
+    environment:
+      # Passa as credenciais do banco de dados como variáveis de ambiente para o Node.js
+      # É uma prática mais segura e flexível do que escrever senhas no código.
+      DB_HOST: db # 'db' é o nome do serviço do banco de dados definido acima
+      DB_USER: chatbot_user
+      DB_PASSWORD: outra_senha_forte
+      DB_DATABASE: chatbot_db
+    # Garante que o contêiner 'db' seja iniciado ANTES do contêiner 'backend'
+    depends_on:
+      - db
+
+# Define os volumes que serão gerenciados pelo Docker para persistir dados
+volumes:
+  mysql-data:
